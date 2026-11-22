@@ -1,0 +1,8 @@
+{
+  "appId": "com.cityofcrime.game",
+  "appName": "CITY OF CRIME",
+  "webDir": "dist",
+  "server": {
+    "androidScheme": "https"
+  }
+}

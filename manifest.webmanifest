@@ -1,0 +1,10 @@
+{
+  "name": "CITY OF CRIME",
+  "short_name": "City of Crime",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#101923",
+  "theme_color": "#101923",
+  "orientation": "landscape",
+  "icons": []
+}

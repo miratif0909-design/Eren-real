@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="theme-color" content="#101923"><meta name="description" content="CITY OF CRIME - 3D coastal open-world action adventure">
+<link rel="manifest" href="manifest.webmanifest">
+<title>CITY OF CRIME</title>
+<style>
+*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#101923;color:#fff;font-family:system-ui,Arial}canvas{display:block}
+#hud{position:fixed;inset:0;pointer-events:none}.panel{background:#07111dcc;border:1px solid #ffffff30;border-radius:12px;padding:10px 13px;backdrop-filter:blur(8px);box-shadow:0 5px 18px #0005}
+#brand{position:absolute;top:12px;left:12px;font-weight:900;letter-spacing:2px;font-size:15px}#stats{position:absolute;right:12px;top:12px;text-align:right;font-size:12px}
+#mission{position:absolute;top:76px;left:12px;max-width:260px;font-size:12px}#hint{position:absolute;left:50%;top:15px;transform:translateX(-50%);font-size:12px;text-align:center}
+#controls{position:absolute;inset:auto 0 16px 0;display:flex;justify-content:space-between;align-items:end;padding:0 18px;pointer-events:none}
+#stick{width:132px;height:132px;border-radius:50%;background:#ffffff20;border:2px solid #ffffff70;pointer-events:auto;position:relative;touch-action:none}
+#knob{position:absolute;width:54px;height:54px;border-radius:50%;background:#d8e8f0aa;border:2px solid white;left:37px;top:37px}
+#buttons{display:grid;grid-template-columns:repeat(2,70px);gap:9px;pointer-events:auto}
+button{border:1px solid #ffffff80;background:#142b3ddd;color:white;border-radius:13px;padding:12px 8px;font-weight:700;touch-action: manipulation}
+button:active{background:#2876a9}#menu{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(90vw,420px);pointer-events:auto;text-align:center}
+#menu h1{margin:0;font-size:32px;letter-spacing:3px}#menu p{color:#c8d5df;font-size:13px;line-height:1.5}#menu button{margin:5px}
+#toast{position:absolute;bottom:165px;left:50%;transform:translateX(-50%);font-size:12px;white-space:nowrap}
+@media(min-width:800px){#stick{width:145px;height:145px}#knob{left:42px;top:42px}#buttons{grid-template-columns:repeat(2,82px)}}
+</style>
+</head>
+<body>
+<div id="hud">
+ <div id="brand" class="panel">CITY OF CRIME <small style="color:#72d6ff"> • COASTAL DISTRICT</small></div>
+ <div id="stats" class="panel">CASH <b id="cash">$500</b><br>HEALTH <b id="health">100</b><br>MODE <b id="mode">ON FOOT</b></div>
+ <div id="mission" class="panel"><b id="missionTitle">MISSION 01 — FIRST MEETING</b><br><span id="missionText">Find the blue marker near the pier.</span></div>
+ <div id="hint" class="panel">WASD / ARROWS to move • drag to look • E to interact</div>
+ <div id="toast"></div>
+ <div id="controls"><div id="stick"><div id="knob"></div></div><div id="buttons">
+  <button id="jump">JUMP</button><button id="interact">INTERACT</button>
+  <button id="run">RUN</button><button id="enter">ENTER CAR</button>
+  <button id="next">NEXT MISSION</button><button id="save">SAVE</button>
+ </div></div>
+ <div id="menu" class="panel"><h1>CITY OF CRIME</h1><p>A compact 3D coastal city. Explore, find the mission marker, and take a car for a drive.<br>Optimized starter build • High-quality lighting • Mobile controls</p><button id="start">START GAME</button><button id="quality">GRAPHICS: HIGH</button></div>
+</div>
+<script type="module">
+import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js';
+const scene=new THREE.Scene(); scene.background=new THREE.Color(0x91c7e8); scene.fog=new THREE.Fog(0x91c7e8,95,270);
+const camera=new THREE.PerspectiveCamera(65,innerWidth/innerHeight,.1,500);
+const renderer=new THREE.WebGLRenderer({antialias:true,powerPreference:'high-performance'});
+renderer.setSize(innerWidth,innerHeight); renderer.setPixelRatio(Math.min(devicePixelRatio,1.65)); renderer.shadowMap.enabled=true; renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+renderer.outputColorSpace=THREE.SRGBColorSpace; renderer.toneMapping=THREE.ACESFilmicToneMapping; renderer.toneMappingExposure=1.05; document.body.appendChild(renderer.domElement);
+scene.add(new THREE.HemisphereLight(0xd9efff,0x52604a,2.0));
+const sun=new THREE.DirectionalLight(0xffe3b2,3.1); sun.position.set(-45,75,30); sun.castShadow=true; sun.shadow.mapSize.set(1024,1024); sun.shadow.camera.left=-100;sun.shadow.camera.right=100;sun.shadow.camera.top=100;sun.shadow.camera.bottom=-100;scene.add(sun);
+const mat=(c,r=.8,m=0)=>new THREE.MeshStandardMaterial({color:c,roughness:r,metalness:m});
+const grass=mat(0x63835a), road=mat(0x303940,.95), sidewalk=mat(0xa8a69b), sand=mat(0xd6c18d), water=mat(0x187eaa,.25,.25), white=mat(0xe7e5d9), glass=mat(0x6b9ba8,.25,.35);
+function box(w,h,d,material,x,y,z,sh=true){let o=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),material);o.position.set(x,y,z);o.castShadow=sh;o.receiveShadow=true;scene.add(o);return o}
+const ground=new THREE.Mesh(new THREE.PlaneGeometry(500,500),grass);ground.rotation.x=-Math.PI/2;ground.position.y=-.12;ground.receiveShadow=true;scene.add(ground);
+// ocean and beach
+box(500,.2,100,water,0,-.04,-190,false);box(500,.18,22,sand,0,-.02,-130,false);
+for(let i=0;i<9;i++){let x=-90+i*23;let palm=new THREE.Group();let trunk=new THREE.Mesh(new THREE.CylinderGeometry(.35,.55,8,7),mat(0x80603b));trunk.position.y=4;palm.add(trunk);for(let a=0;a<6;a++){let leaf=new THREE.Mesh(new THREE.ConeGeometry(.65,7,5),mat(0x286b3d));leaf.position.set(Math.cos(a*Math.PI/3)*2.2,7.4,Math.sin(a*Math.PI/3)*2.2);leaf.rotation.z=-.9;leaf.rotation.x=Math.sin(a)*.4;palm.add(leaf)}palm.position.set(x,0,-118+Math.sin(i)*7);scene.add(palm)}
+// road grid
+for(let z=-95;z<=85;z+=45){box(250,.12,12,road,0,.02,z,false);box(250,.13,1.2,white,0,.1,z-5.2,false);box(250,.13,1.2,white,0,.1,z+5.2,false)}
+for(let x=-105;x<=105;x+=45){box(12,.12,230,road,x,.03,-20,false)}
+// city blocks
+const buildingMats=[0xc4b9a6,0x8799a4,0xd3d0c6,0x9a887c,0x71858c,0xd0b68d].map(c=>mat(c,.85));
+for(let x=-92;x<=92;x+=23) for(let z=-82;z<=75;z+=30){
+ if(Math.abs(x)<16&&Math.abs(z)<20)continue;
+ let h=9+Math.random()*25,w=10+Math.random()*7,d=12+Math.random()*7;
+ let b=box(w,h,d,buildingMats[Math.floor(Math.random()*buildingMats.length)],x,h/2,z);
+ // windows on street-facing front
+ let winmat=mat(0x35566a,.25,.3);
+ for(let yy=2.5;yy<h-1;yy+=3.5)for(let xx=-w/2+1.5;xx<w/2-1;xx+=2.5){let win=box(.95,1.5,.08,winmat,x+xx,yy,z-d/2-.05,false);win.castShadow=false}
+}
+// streetlights
+for(let z=-90;z<90;z+=30)for(let x of [-18,18]){let pole=box(.22,7,.22,mat(0x343b40),x,3.5,z);box(2,.18,.5,mat(0xe9dcae),x+0.8,7,z,false)}
+// cars
+function makeCar(x,z,color=0xc12d24){let g=new THREE.Group();let body=new THREE.Mesh(new THREE.BoxGeometry(4.2,1.1,2.05),mat(color,.35,.35));body.position.y=.85;body.castShadow=true;g.add(body);let cabin=new THREE.Mesh(new THREE.BoxGeometry(2.2,1,1.75),glass);cabin.position.set(-.25,1.85,0);g.add(cabin);for(let wx of [-1.35,1.35])for(let wz of [-1,1]){let wh=new THREE.Mesh(new THREE.CylinderGeometry(.48,.48,.25,16),mat(0x17191b));wh.rotation.x=Math.PI/2;wh.position.set(wx,.48,wz);g.add(wh)}g.position.set(x,0,z);scene.add(g);return g}
+const car=makeCar(9,12,0x197fba);const traffic=[makeCar(-25,-45,0xd5d5d5),makeCar(42,43,0x242b34),makeCar(-62,15,0xc4a33b)];
+// player
+const player=new THREE.Group();let torso=new THREE.Mesh(new THREE.CapsuleGeometry(.55,.9,5,10),mat(0x263d52));torso.position.y=1.45;torso.castShadow=true;player.add(torso);let head=new THREE.Mesh(new THREE.SphereGeometry(.38,16,12),mat(0xb98261));head.position.y=2.35;player.add(head);scene.add(player);player.position.set(0,0,0);
+const marker=new THREE.Mesh(new THREE.TorusGeometry(2,.18,8,32),new THREE.MeshBasicMaterial({color:0x33d9ff}));marker.rotation.x=Math.PI/2;marker.position.set(-35,.25,-95);scene.add(marker);
+let inCar=false,started=false,run=false,low=false,cash=500,mission=0,carSpeed=0,heading=0,camYaw=0,camPitch=.18;
+const missions=[['FIRST MEETING','Find the blue marker near the pier.'],['LOST PACKAGE','Reach the old warehouse.'],['CITY CHASE','Drive through the marked street checkpoint.'],['CAR DELIVERY','Bring the blue sports car to the garage.'],['NIGHT ESCAPE','Reach the beach road after sunset.'],['HIDDEN EVIDENCE','Search the hilltop overlook.'],['RESCUE MISSION','Visit the marina.'],['GARAGE CHALLENGE','Return to your starting garage.'],['FINAL DEAL','Meet the contact downtown.'],['CITY FREEDOM','Explore the coastal district.']];
+const targets=[[-35,-95],[70,-55],[65,20],[9,12],[-65,-105],[80,70],[0,-120],[9,12],[-5,45],[0,-130]];
+function setMission(){document.getElementById('missionTitle').textContent=`MISSION ${String(mission+1).padStart(2,'0')} — ${missions[mission][0]}`;document.getElementById('missionText').textContent=missions[mission][1];marker.position.x=targets[mission][0];marker.position.z=targets[mission][1]}
+setMission();
+const keys={};addEventListener('keydown',e=>{keys[e.key.toLowerCase()]=true;if(e.key.toLowerCase()==='e')interact()});addEventListener('keyup',e=>keys[e.key.toLowerCase()]=false);
+let joy={x:0,y:0};const stick=document.getElementById('stick'),knob=document.getElementById('knob');let stickId=null;
+stick.addEventListener('pointerdown',e=>{stickId=e.pointerId;stick.setPointerCapture(stickId);moveStick(e)});stick.addEventListener('pointermove',e=>{if(e.pointerId===stickId)moveStick(e)});function moveStick(e){let r=stick.getBoundingClientRect(),dx=e.clientX-(r.left+r.width/2),dy=e.clientY-(r.top+r.height/2),len=Math.hypot(dx,dy),max=42;if(len>max){dx*=max/len;dy*=max/len}joy.x=dx/max;joy.y=dy/max;knob.style.transform=`translate(${dx}px,${dy}px)`}function resetStick(){stickId=null;joy={x:0,y:0};knob.style.transform=''}stick.addEventListener('pointerup',resetStick);stick.addEventListener('pointercancel',resetStick);
+let lookId=null,lastX=0,lastY=0;renderer.domElement.addEventListener('pointerdown',e=>{if(e.clientX<innerWidth*.48&&e.clientY>innerHeight*.45)return;lookId=e.pointerId;lastX=e.clientX;lastY=e.clientY;renderer.domElement.setPointerCapture(lookId)});renderer.domElement.addEventListener('pointermove',e=>{if(e.pointerId===lookId){camYaw-=(e.clientX-lastX)*.004;camPitch=Math.max(-.05,Math.min(.65,camPitch+(e.clientY-lastY)*.003));lastX=e.clientX;lastY=e.clientY}});renderer.domElement.addEventListener('pointerup',()=>lookId=null);
+function toast(s){let t=document.getElementById('toast');t.textContent=s;setTimeout(()=>{if(t.textContent===s)t.textContent=''},2300)}
+function interact(){let t=new THREE.Vector3(marker.position.x,0,marker.position.z);if(player.position.distanceTo(t)<9){cash+=250;document.getElementById('cash').textContent='$'+cash;toast('MISSION COMPLETE  +$250');if(mission<9){mission++;setMission()}else toast('CITY FREEDOM UNLOCKED — EXPLORE!')}else if(!inCar){toast('Move closer to the blue mission marker.')}else{toast('No interaction nearby.')}}
+document.getElementById('interact').onclick=interact;document.getElementById('jump').onclick=()=>{if(!inCar){player.position.y=.8;setTimeout(()=>player.position.y=0,350)}};document.getElementById('run').onpointerdown=()=>run=true;document.getElementById('run').onpointerup=()=>run=false;
+document.getElementById('enter').onclick=()=>{if(!inCar&&player.position.distanceTo(car.position)<7){inCar=true;player.visible=false;toast('Entered vehicle')}else if(inCar){inCar=false;player.visible=true;player.position.copy(car.position).add(new THREE.Vector3(3,0,0));toast('Exited vehicle')}else toast('Get closer to the blue car.')};
+document.getElementById('next').onclick=()=>{mission=(mission+1)%10;setMission();toast('Mission selected')};
+document.getElementById('save').onclick=()=>{localStorage.setItem('coc-save',JSON.stringify({cash,mission,px:player.position.x,pz:player.position.z,cx:car.position.x,cz:car.position.z}));toast('Progress saved on this device')};
+document.getElementById('quality').onclick=()=>{low=!low;renderer.setPixelRatio(Math.min(devicePixelRatio,low?1:1.65));sun.castShadow=!low;document.getElementById('quality').textContent='GRAPHICS: '+(low?'PERFORMANCE':'HIGH')};
+document.getElementById('start').onclick=()=>{started=true;document.getElementById('menu').style.display='none';toast('Explore the city and find the blue marker.')};
+try{let s=JSON.parse(localStorage.getItem('coc-save'));if(s){cash=s.cash;mission=s.mission;player.position.set(s.px,0,s.pz);car.position.set(s.cx,0,s.cz);document.getElementById('cash').textContent='$'+cash;setMission()}}catch{}
+function update(dt){marker.rotation.z+=dt*.8;let forward=(keys.w||keys.arrowup?-1:0)+(keys.s||keys.arrowdown?1:0)-joy.y,right=(keys.d||keys.arrowright?1:0)-(keys.a||keys.arrowleft?1:0)+joy.x;
+ if(inCar){carSpeed+=(forward*26*dt);carSpeed*=Math.pow(.975,dt*60);carSpeed=Math.max(-12,Math.min(34,carSpeed));heading-=right*dt*1.7*(Math.abs(carSpeed)/12+.25);car.rotation.y=heading;car.position.x+=Math.sin(heading)*carSpeed*dt;car.position.z+=Math.cos(heading)*carSpeed*dt;player.position.copy(car.position)}else{let sp=(run||keys.shift?13:7);let ang=camYaw;let vx=(Math.sin(ang)*forward+Math.cos(ang)*right)*sp*dt,vz=(Math.cos(ang)*forward-Math.sin(ang)*right)*sp*dt;player.position.x+=vx;player.position.z+=vz;if(Math.hypot(vx,vz)>.001)player.rotation.y=Math.atan2(vx,vz)}
+ // soft city boundary
+ player.position.x=THREE.MathUtils.clamp(player.position.x,-115,115);player.position.z=THREE.MathUtils.clamp(player.position.z,-145,100);
+ let focus=inCar?car.position:player.position;let dist=inCar?13:10;let desired=new THREE.Vector3(focus.x+Math.sin(camYaw)*dist,focus.y+4+camPitch*5,focus.z+Math.cos(camYaw)*dist);camera.position.lerp(desired,1-Math.pow(.001,dt));camera.lookAt(focus.x,focus.y+1.5,focus.z);
+ document.getElementById('mode').textContent=inCar?'DRIVING':'ON FOOT';
+}
+let last=performance.now();function loop(now){requestAnimationFrame(loop);let dt=Math.min(.04,(now-last)/1000);last=now;if(started)update(dt);renderer.render(scene,camera)}requestAnimationFrame(loop);
+addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);renderer.setPixelRatio(Math.min(devicePixelRatio,1.65))});
+if('serviceWorker'in navigator)navigator.serviceWorker.register('./sw.js').catch(()=>{});
+</script>
+</body></html>
